@@ -1,5 +1,5 @@
 """Controles de calidad con Great Expectations."""
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any
 
@@ -308,7 +308,7 @@ def _persist_findings(
         connection: Conexión abierta a DuckDB.
         findings: Hallazgos resumidos.
     """
-    dataframe = pd.DataFrame([finding.__dict__ for finding in findings])
+    dataframe = pd.DataFrame([asdict(finding) for finding in findings])
     connection.register('quality_findings_df', dataframe)
     connection.execute(
         """
