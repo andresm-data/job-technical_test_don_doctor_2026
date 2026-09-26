@@ -11,6 +11,7 @@ Declaración del uso de herramientas de IA durante la prueba técnica.
 |---|--- |---|
 | Copilot | Diseño de la estructura de archivos y directorios adecuados para el proyecto | README.md, USO-IA.md, registro_tiempo.md |
 | Claude | Estructurar el SQL de los hallazgos de calidad de datos | 01_diagnostico.ipynb, sql/diagnostico/*.sql |
+| Copilot | Diseño de la estructura de archivos y directorios adecuados para el proyecto | src/ |
 
 
 ## 2. Manejo de los datos
