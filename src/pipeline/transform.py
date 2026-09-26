@@ -280,6 +280,22 @@ def _build_clean_citas_sql() -> str:
             END AS recordatorio_validado,
             confirmada,
             gestion_recuperacion,
+            CASE
+                WHEN estado = 'CANCELADA' AND fecha_actualizacion IS NOT NULL THEN date_diff('minute', fecha_actualizacion, fecha_cita)
+                ELSE NULL
+            END AS minutos_anticipacion_cancelacion,
+            CASE
+                WHEN estado IN ('ATENDIDA', 'NO_ASISTIO') THEN 1
+                WHEN estado = 'CANCELADA' AND fecha_actualizacion IS NOT NULL
+                    AND date_diff('minute', fecha_actualizacion, fecha_cita) < 120 THEN 1
+                ELSE 0
+            END AS ocupo_agenda,
+            CASE
+                WHEN estado = 'NO_ASISTIO' THEN 1
+                WHEN estado = 'CANCELADA' AND fecha_actualizacion IS NOT NULL
+                    AND date_diff('minute', fecha_actualizacion, fecha_cita) < 120 THEN 1
+                ELSE 0
+            END AS es_ausentismo,
             motivo_cierre,
             cita_origen_id,
             fue_duplicada_en_origen,
@@ -543,9 +559,11 @@ def _build_fact_citas_sql() -> str:
             c.recordatorio_validado,
             c.confirmada,
             c.gestion_recuperacion,
+            c.minutos_anticipacion_cancelacion,
+            c.ocupo_agenda,
+            c.es_ausentismo,
             CASE WHEN c.estado = 'NO_ASISTIO' THEN 1 ELSE 0 END AS es_no_asistio,
             CASE WHEN c.estado = 'ATENDIDA' THEN 1 ELSE 0 END AS es_atendida,
-            CASE WHEN c.estado IN ('ATENDIDA', 'NO_ASISTIO') THEN 1 ELSE 0 END AS entra_base_ausentismo,
             c.fue_duplicada_en_origen,
             c.tiene_observaciones
         FROM
@@ -565,12 +583,12 @@ def _build_agg_ausentismo_sql() -> str:
         SELECT
             ips_id,
             date_trunc('month', fecha_cita) AS periodo_mes,
-            COUNT(*) FILTER (WHERE entra_base_ausentismo = 1) AS total_citas_base,
+            SUM(ocupo_agenda) AS total_citas_base,
             SUM(es_atendida) AS citas_atendidas,
             SUM(es_no_asistio) AS citas_no_asistidas,
             CASE
-                WHEN COUNT(*) FILTER (WHERE entra_base_ausentismo = 1) = 0 THEN 0
-                ELSE ROUND(SUM(es_no_asistio) * 100.0 / COUNT(*) FILTER (WHERE entra_base_ausentismo = 1), 2)
+                WHEN SUM(ocupo_agenda) = 0 THEN 0
+                ELSE ROUND(SUM(es_ausentismo) * 100.0 / SUM(ocupo_agenda), 2)
             END AS tasa_ausentismo_pct
         FROM
             mart.fact_citas

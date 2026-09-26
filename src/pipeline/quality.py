@@ -109,6 +109,9 @@ def _validate_clean_citas(dataframe: pd.DataFrame, cutoff_at: datetime) -> list[
                     'recordatorio_validado',
                     'confirmada',
                     'gestion_recuperacion',
+                    'minutos_anticipacion_cancelacion',
+                    'ocupo_agenda',
+                    'es_ausentismo',
                     'motivo_cierre',
                     'cita_origen_id',
                     'fue_duplicada_en_origen',
@@ -163,6 +166,18 @@ def _validate_clean_citas(dataframe: pd.DataFrame, cutoff_at: datetime) -> list[
             'estado_futuro_valido',
             ge.expectations.ExpectColumnValuesToBeInSet(
                 column='estado_futuro_valido', value_set=[True]
+            )
+        ),
+        (
+            'ocupo_agenda_valido',
+            ge.expectations.ExpectColumnValuesToBeInSet(
+                column='ocupo_agenda', value_set=[0, 1]
+            )
+        ),
+        (
+            'es_ausentismo_valido',
+            ge.expectations.ExpectColumnValuesToBeInSet(
+                column='es_ausentismo', value_set=[0, 1]
             )
         )
     ]
@@ -220,9 +235,13 @@ def _validate_fact_citas(dataframe: pd.DataFrame) -> list[QualityFinding]:
         list[QualityFinding]: Resultados resumidos.
     """
     dataset = dataframe.copy()
-    dataset['entra_base_valida'] = dataset['entra_base_ausentismo'].isin(
+    dataset['ocupo_agenda_valida'] = dataset['ocupo_agenda'].isin(
         [0, 1]
     )
+    dataset['es_ausentismo_valida'] = dataset['es_ausentismo'].isin(
+        [0, 1]
+    )
+    dataset['ausentismo_dentro_de_base'] = dataset['es_ausentismo'] <= dataset['ocupo_agenda']
     batch = _build_batch(dataset, 'fact_citas_asset')
 
     expectations = [
@@ -235,9 +254,21 @@ def _validate_fact_citas(dataframe: pd.DataFrame) -> list[QualityFinding]:
             ge.expectations.ExpectColumnValuesToNotBeNull(column='ips_id')
         ),
         (
-            'flags_base_validas',
+            'ocupo_agenda_valida',
             ge.expectations.ExpectColumnValuesToBeInSet(
-                column='entra_base_valida', value_set=[True]
+                column='ocupo_agenda_valida', value_set=[True]
+            )
+        ),
+        (
+            'es_ausentismo_valida',
+            ge.expectations.ExpectColumnValuesToBeInSet(
+                column='es_ausentismo_valida', value_set=[True]
+            )
+        ),
+        (
+            'ausentismo_dentro_de_base',
+            ge.expectations.ExpectColumnValuesToBeInSet(
+                column='ausentismo_dentro_de_base', value_set=[True]
             )
         )
     ]
